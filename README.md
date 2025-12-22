@@ -1,6 +1,8 @@
 # Tailscale-Monitor
 Monitors if new users connect through a tailscale instance on a server, if detected, it sends an e-mail.
 
+While tailscale is considered safe, we can never rule out unauthorized use. So in oder to detect that, we can monitor tailscale and see if a new user has connected. The .sh file checks every 5 minutes if a new user is connected. If so, it send an e-mail to the administrator.
+
 # Uses
 Prevents unauthorized access to tailscale devices, or private exit nodes.
 
