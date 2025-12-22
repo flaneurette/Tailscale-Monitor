@@ -1,6 +1,9 @@
 # Tailscale-Monitor
 Monitors if new users connect through a tailscale instance on a server, if detected, it sends an e-mail.
 
+# Uses
+Prevents unauthorized access to tailscale devices, or private exit nodes.
+
 # Installation
 
 ```
@@ -27,4 +30,6 @@ Add:
 */5 * * * * /usr/local/bin/tailscale-monitor.sh
 ```
 
-To check every 5 minutes if a new user connected to tailscale. If so, take immediate action!
+To check every 5 minutes if a new user connected to tailscale. 
+
+If so, take immediate action! Which could be: log into your tailscale admin and block the user in question, then do a security audit.
