@@ -76,17 +76,31 @@ Or every minute for faster detection:
 
 **Important**: This script is a monitoring tool, not a prevention mechanism. Configure Tailscale's built-in security:
 
-### Require manual device approval:
-```bash
-tailscale set --auto-approve=false
-```
+### In Tailscale Admin Console (https://tailscale.com/):
 
-### Enable key expiry:
-```bash
-tailscale set --key-expiry=30d
-```
+1. **Enable Device Authorization:**
+   - Go to Settings → Keys
+   - Enable "Require device authorization"
+   - All new devices must be manually approved
 
-### In Tailscale Admin Console:
+2. **Set Key Expiry:**
+   - Go to Settings → Keys
+   - Configure default key expiry (recommended: 30-90 days)
+   - Existing devices may need re-authentication
+
+3. **Enable MFA/2FA:**
+   - Go to Settings → Users
+   - Require multi-factor authentication
+
+4. **Configure ACLs:**
+   - Go to Access Controls
+   - Define policies limiting device access
+   - Follow principle of least privilege
+
+5. **Enable Audit Logging:**
+   - Review logs regularly for suspicious activity set --key-expiry=30d
+
+### Confirm:
 -  Enable device authorization (manual approval required)
 -  Set up MFA/2FA on your Tailscale account
 -  Configure ACL policies to limit device access
