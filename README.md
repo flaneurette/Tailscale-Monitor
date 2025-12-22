@@ -1,63 +1,191 @@
 # Tailscale-Monitor
-Monitors if new users connect through a tailscale instance on a server, if detected, it sends an e-mail.
+Monitors Tailscale connections and sends email alerts when new devices join your network.
 
-While tailscale is considered safe, we can never rule out unauthorized use. So in order to detect that, we can monitor tailscale and see if a new user has connected. The .sh file checks every 5 minutes if a new user is connected. If so, it send an e-mail to the administrator.
+## Why Use This?
 
-# Tailscale settings:
+While Tailscale is secure, this script provides an **independent monitoring layer** that protects against:
+- Compromised Tailscale admin accounts
+- Unauthorized device approvals
+- Audit log tampering
+- Security misconfigurations
 
-### Require approval for new devices
-`tailscale set --auto-approve=false`
+**Defense in depth**: If your Tailscale web console is compromised, you might never know it through Tailscale's own logging. This script provides out-of-band alerting that runs independently on your infrastructure.
 
-### Enable key expiry
-`tailscale set --key-expiry=30d`
+## Features
 
-### Tailscale admin
+- Detects new devices connecting to your Tailscale network
+- Excludes the monitoring host (won't alert on itself)
+- Email notifications with device details
+- Persistent state tracking between runs
+- Logging for audit trail
+- Independent of Tailscale's admin console
 
-Use Tailscale's Admin Console:
+## Prerequisites
 
-- Enable device authorization - you must manually approve each new device
-- Set up MFA/2FA on your Tailscale account
-- Use ACL policies to limit what each device can access
-- Enable audit logging
-
-# Uses
-Prevents unauthorized access to tailscale devices, or private exit nodes. This script can tell if an unauthorized attempt occured in case of a breach. Which can be useful, especially if the webadmin has been comproised in unforseen ways. This adds an extra layer of security, because now we can tell for certain that a breach occured. If the tailscale webconsole is compromised, we might *never* know it. Now we do.
-
-# Installation
-
-```
+```bash
 sudo apt update
-sudo apt install mailutils
+sudo apt install mailutils jq
 ```
 
-Edit `tailscale-monitor.sh` and set your *e-mailaddress*, save it.
-
+**Note**: Ensure your mail system is configured. Test with:
+```bash
+echo "Test" | mail -s "Test Subject" your@email.com
 ```
-touch /usr/local/bin/tailscale-monitor.sh
-nano /usr/local/bin/tailscale-monitor.sh
-```
-Paste the `tailscale-monitor.sh` file
 
-Save.
+## Installation
 
-# Cron
+1. **Create the script:**
+```bash
+sudo nano /usr/local/bin/tailscale-monitor.sh
 ```
+
+2. **Paste the script content** (see `tailscale-monitor.sh`)
+
+3. **Edit configuration:**
+   - Set `EMAIL="your@email.com"`
+   - Optionally set `FROM="tailscale-monitor@yourdomain.com"`
+
+4. **Make executable:**
+```bash
+sudo chmod +x /usr/local/bin/tailscale-monitor.sh
+```
+
+5. **Test the script:**
+```bash
+sudo /usr/local/bin/tailscale-monitor.sh
+```
+
+## Setup Automated Monitoring
+
+Add to root's crontab:
+```bash
 sudo crontab -e
 ```
-Add:
+
+Check every 5 minutes:
 ```
-*/5 * * * * /usr/local/bin/tailscale-monitor.sh
+*/5 * * * * /usr/local/bin/tailscale-monitor.sh > /dev/null 2>&1
 ```
 
-To check every 5 minutes if a new user connected to tailscale. 
+Or every minute for faster detection:
+```
+* * * * * /usr/local/bin/tailscale-monitor.sh > /dev/null 2>&1
+```
 
-If so, take immediate action! Which could be: log into your tailscale admin and block the user in question, then do a security audit.
+## Tailscale Security Settings
 
-# Optional
+**Important**: This script is a monitoring tool, not a prevention mechanism. Configure Tailscale's built-in security:
 
-### Make script immutable 
-Even root can't modify without removing attribute:
-`chattr +i /usr/local/bin/tailscale-monitor.sh`
+### Require manual device approval:
+```bash
+tailscale set --auto-approve=false
+```
 
-### To modify later:
-`chattr -i /usr/local/bin/tailscale-monitor.sh`
+### Enable key expiry:
+```bash
+tailscale set --key-expiry=30d
+```
+
+### In Tailscale Admin Console:
+-  Enable device authorization (manual approval required)
+-  Set up MFA/2FA on your Tailscale account
+-  Configure ACL policies to limit device access
+-  Enable audit logging
+-  Review connected devices regularly
+
+## When You Receive an Alert
+
+**Immediate actions:**
+
+1. Check your email for device details (IP, hostname, OS, user)
+2. Log into Tailscale admin console
+3. Verify if the connection was authorized
+4. If unauthorized:
+   - Revoke device access immediately
+   - Change your Tailscale account password
+   - Enable/verify MFA is active
+   - Review audit logs for other suspicious activity
+   - Check ACLs for unauthorized changes
+5. If authorized but unexpected:
+   - Verify device owner identity through another channel
+   - Review device details and approval history
+
+## File Locations
+
+- Script: `/usr/local/bin/tailscale-monitor.sh`
+- State file: `/var/tmp/tailscale_devices.txt`
+- Log file: `/var/log/tailscale-watch.log`
+
+## Optional Hardening
+
+### Make script immutable
+Prevents modification even by root:
+```bash
+sudo chattr +i /usr/local/bin/tailscale-monitor.sh
+```
+
+To modify later:
+```bash
+sudo chattr -i /usr/local/bin/tailscale-monitor.sh
+```
+
+### Protect state file
+```bash
+sudo chmod 600 /var/tmp/tailscale_devices.txt
+sudo chown root:root /var/tmp/tailscale_devices.txt
+```
+
+## Troubleshooting
+
+### No emails received:
+```bash
+# Check mail logs
+sudo tail -f /var/log/mail.log
+
+# Verify mail queue
+mailq
+
+# Test mail configuration
+echo "Test" | mail -s "Test" your@email.com
+```
+
+### Script not running:
+```bash
+# Check cron logs
+sudo grep CRON /var/log/syslog
+
+# Verify crontab
+sudo crontab -l
+
+# Test script manually
+sudo /usr/local/bin/tailscale-monitor.sh
+```
+
+### False positives:
+The first run after installation will detect all existing devices as "new". This is normal and expected.
+
+## Limitations
+
+- **Not a prevention tool**: Alerts are sent *after* a device connects
+- **Email delays**: Notifications may be delayed by seconds to minutes
+- **Local monitoring only**: Only monitors the server where it's installed
+- **Can be bypassed**: If the monitoring server is compromised
+
+## Security Considerations
+
+This script is part of a **defense-in-depth strategy**:
+
+1. **Prevention**: Tailscale device authorization (primary security)
+2. **Detection**: This monitoring script (backup verification)
+3. **Limitation**: ACLs to minimize damage if compromised
+4. **Response**: Incident response procedures
+
+**Never rely on a single security measure.**
+
+## License
+
+MIT
+
+## Contributing
+
+Contributions welcome! Please open an issue or pull request.
